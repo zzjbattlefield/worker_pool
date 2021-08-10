@@ -10,19 +10,25 @@ import (
 )
 
 func TestRun(t *testing.T) {
-	pool := workersPool.New(5)
+	pool := workersPool.New(3)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Nanosecond)
 	defer cancel()
 	go pool.Run(ctx)
-	go pool.GenerateJob(testJob())
+	go pool.GenerateJob(ctx, testJob())
 	defer func() {
+		time.Sleep(time.Second)
 		fmt.Println("num of gorutine:", runtime.NumGoroutine())
 	}()
 	for {
 		select {
 		case val, ok := <-pool.Result:
 			if ok {
-				fmt.Println(val.Value)
+				if val.Error != nil {
+					// log.Println(val.Error.Error())
+				} else {
+					fmt.Println(val.Value)
+				}
+
 			} else {
 				t.Fatalf("fail! pool.Result return not ok")
 			}
@@ -34,7 +40,7 @@ func TestRun(t *testing.T) {
 
 func testJob() []workersPool.Job {
 	var result = make([]workersPool.Job, 0)
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 100; i++ {
 		result = append(result, workersPool.Job{
 			Descriptor: workersPool.JobDescriptor{
 				Type:     "anyType",

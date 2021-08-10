@@ -60,9 +60,15 @@ func (p *workersPool) worker(ctx context.Context, wg *sync.WaitGroup) {
 }
 
 //任务生成器
-func (p *workersPool) GenerateJob(jobs []Job) {
+func (p *workersPool) GenerateJob(ctx context.Context, jobs []Job) {
 	for _, job := range jobs {
-		p.jobs <- job
+		select {
+		case <-ctx.Done():
+			close(p.jobs)
+			return
+		default:
+			p.jobs <- job
+		}
 	}
 	//分配完所有任务后关闭jobChannel worker做完所有任务后自动退出
 	close(p.jobs)
