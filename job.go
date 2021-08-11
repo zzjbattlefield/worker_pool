@@ -28,7 +28,7 @@ type Result struct {
 	Descriptor JobDescriptor
 }
 
-func (j *Job) excute(ctx context.Context) Result {
+func (j *Job) execute(ctx context.Context) Result {
 	result := Result{
 		Descriptor: j.Descriptor,
 	}

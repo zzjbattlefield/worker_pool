@@ -52,7 +52,7 @@ func (p *workersPool) worker(ctx context.Context, wg *sync.WaitGroup) {
 				//任务队列被关闭 worker退出
 				return
 			} else {
-				result := job.excute(ctx)
+				result := job.execute(ctx)
 				p.Result <- result
 			}
 		}

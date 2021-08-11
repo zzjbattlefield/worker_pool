@@ -1,30 +1,31 @@
-package workersPool_test
+package workersPool
 
 import (
 	"context"
 	"fmt"
+	"log"
 	"runtime"
 	"testing"
 	"time"
-	"workersPool"
 )
 
 func TestRun(t *testing.T) {
-	pool := workersPool.New(3)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Nanosecond)
-	defer cancel()
+	pool := New(3)
+	ctx := context.Background()
 	go pool.Run(ctx)
 	go pool.GenerateJob(ctx, testJob())
 	defer func() {
-		time.Sleep(time.Second)
-		fmt.Println("num of gorutine:", runtime.NumGoroutine())
+		time.Sleep(time.Microsecond)
+		if runtime.NumGoroutine() != 2 {
+			t.Fatalf("存在goroutine泄露 退出时剩余:%d", runtime.NumGoroutine())
+		}
 	}()
 	for {
 		select {
 		case val, ok := <-pool.Result:
 			if ok {
 				if val.Error != nil {
-					// log.Println(val.Error.Error())
+					log.Println(val.Error.Error())
 				} else {
 					fmt.Println(val.Value)
 				}
@@ -38,11 +39,37 @@ func TestRun(t *testing.T) {
 	}
 }
 
-func testJob() []workersPool.Job {
-	var result = make([]workersPool.Job, 0)
+func TestRun_Cancel(t *testing.T) {
+	pool := New(5)
+	ctx, cancel := context.WithCancel(context.Background())
+	go pool.Run(ctx)
+	cancel()
+	defer func() {
+		time.Sleep(time.Microsecond)
+		if runtime.NumGoroutine() != 2 {
+			t.Fatalf("存在goroutine泄露 退出时剩余:%d", runtime.NumGoroutine())
+		}
+	}()
+	for {
+		select {
+		case r, ok := <-pool.Result:
+			if !ok {
+				fmt.Println("all result recive")
+			}
+			if r.Error != nil && r.Error != context.Canceled {
+				t.Fatalf("want error:%v,got error:%v", context.Canceled, r.Error)
+			}
+		case <-pool.Done:
+			return
+		}
+	}
+}
+
+func testJob() []Job {
+	var result = make([]Job, 0)
 	for i := 0; i < 100; i++ {
-		result = append(result, workersPool.Job{
-			Descriptor: workersPool.JobDescriptor{
+		result = append(result, Job{
+			Descriptor: JobDescriptor{
 				Type:     "anyType",
 				MetaData: nil,
 			},
